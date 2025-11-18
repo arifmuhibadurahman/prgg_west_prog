@@ -7,41 +7,23 @@ import buffer from "@turf/buffer";
 import { point, featureCollection } from "@turf/helpers";
 import { FeatureCollection, Polygon } from "geojson";
 
-// Dynamic import untuk react-leaflet (WAJIB AGAR AMAN DI VERCEL)
-const MapContainer = dynamic(
-  () => import("react-leaflet").then((m) => m.MapContainer),
-  { ssr: false }
-);
-const TileLayer = dynamic(
-  () => import("react-leaflet").then((m) => m.TileLayer),
-  { ssr: false }
-);
-const ScaleControl = dynamic(
-  () => import("react-leaflet").then((m) => m.ScaleControl),
-  { ssr: false }
-);
-const LeafletPolygon = dynamic(
-  () => import("react-leaflet").then((m) => m.Polygon),
-  { ssr: false }
-);
-const useMapEvents = dynamic(
-  () => import("react-leaflet").then((m) => m.useMapEvents),
+// Dynamic import untuk react-leaflet (AMAN UNTUK VERCEL)
+const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import("react-leaflet").then((m) => m.TileLayer), { ssr: false });
+const ScaleControl = dynamic(() => import("react-leaflet").then((m) => m.ScaleControl), { ssr: false });
+const LeafletPolygon = dynamic(() => import("react-leaflet").then((m) => m.Polygon), { ssr: false });
+
+// ❗ FIX: useMapEvents HARUS dibungkus dalam komponen, tidak bisa di-import sebagai fungsi
+const MapEvents = dynamic(
+  () => import("react-leaflet").then((m) => {
+    return function Wrapper({ onClick }: { onClick: (e: LeafletMouseEvent) => void }) {
+      m.useMapEvents({ click: onClick });
+      return null;
+    };
+  }),
   { ssr: false }
 );
 
-// =============================
-// CLICK HANDLER BUFFER
-// =============================
-function ClickBufferHandler({ onClick }: { onClick: (e: LeafletMouseEvent) => void }) {
-  useMapEvents({
-    click: (e) => onClick(e),
-  });
-  return null;
-}
-
-// =============================
-// MAIN PAGE — SIAP DEPLOY DI VERCEL
-// =============================
 export default function MapPage() {
   const [dataBuffer, setDataBuffer] = useState<FeatureCollection<Polygon> | null>(null);
 
@@ -49,10 +31,7 @@ export default function MapPage() {
     const pt = point([e.latlng.lng, e.latlng.lat]);
     const fc = featureCollection([pt]);
 
-    const buffered = buffer(fc, 1, {
-      units: "kilometers",
-    }) as FeatureCollection<Polygon>;
-
+    const buffered = buffer(fc, 1, { units: "kilometers" }) as FeatureCollection<Polygon>;
     setDataBuffer(buffered);
   }, []);
 
@@ -71,7 +50,9 @@ export default function MapPage() {
         />
 
         <ScaleControl position="bottomleft" />
-        <ClickBufferHandler onClick={clickBuffer} />
+
+        {/* FIXED CLICK HANDLER */}
+        <MapEvents onClick={clickBuffer} />
 
         {/* BUFFER RESULT */}
         {dataBuffer &&
@@ -79,6 +60,7 @@ export default function MapPage() {
             const coords = feature.geometry.coordinates.map((poly) =>
               poly.map((coord) => [coord[1], coord[0]])
             );
+
             return (
               <LeafletPolygon
                 key={index}
@@ -92,21 +74,11 @@ export default function MapPage() {
       {/* LEGEND */}
       <div className="absolute bottom-6 right-4 bg-white p-3 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
         <h3 className="font-bold text-sm mb-2">Legend</h3>
-        <div className="flex items-center mb-1">
-          <div className="w-4 h-4 bg-[#FF9900] opacity-60 mr-2" /> Pantai
-        </div>
-        <div className="flex items-center mb-1">
-          <div className="w-4 h-4 bg-[#3388ff] opacity-60 mr-2" /> Bukit
-        </div>
-        <div className="flex items-center mb-1">
-          <div className="w-4 h-4 bg-[#ffcc00] opacity-60 mr-2" /> Air Terjun
-        </div>
-        <div className="flex items-center mb-1">
-          <div className="w-4 h-4 bg-[#ff6600] opacity-60 mr-2" /> Curug
-        </div>
-        <div className="flex items-center mb-1">
-          <div className="w-4 h-4 bg-[#00cc66] opacity-60 mr-2" /> Goa
-        </div>
+        <div className="flex items-center mb-1"><div className="w-4 h-4 bg-[#FF9900] opacity-60 mr-2" /> Pantai</div>
+        <div className="flex items-center mb-1"><div className="w-4 h-4 bg-[#3388ff] opacity-60 mr-2" /> Bukit</div>
+        <div className="flex items-center mb-1"><div className="w-4 h-4 bg-[#ffcc00] opacity-60 mr-2" /> Air Terjun</div>
+        <div className="flex items-center mb-1"><div className="w-4 h-4 bg-[#ff6600] opacity-60 mr-2" /> Curug</div>
+        <div className="flex items-center mb-1"><div className="w-4 h-4 bg-[#00cc66] opacity-60 mr-2" /> Goa</div>
       </div>
 
       {/* SEARCH BOX */}
