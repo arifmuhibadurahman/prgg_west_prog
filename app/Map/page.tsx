@@ -10,7 +10,7 @@
 import { MapContainer, TileLayer, Polygon as LeafletPolygon, ScaleControl, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useState, useCallback } from "react";
-import L, { LeafletMouseEvent } from "leaflet";
+import { LeafletMouseEvent } from "leaflet";
 import * as turf from "@turf/turf";
 import { FeatureCollection, Polygon } from "geojson";
 
