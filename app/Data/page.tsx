@@ -1,122 +1,125 @@
-import React from "react";
+"use client";
 
-// Contoh sumber data per kategori
-const dataSources = [
+import Image from "next/image";
+
+// Data contoh banyak kotakan, sumber data bervariasi (BPS, OSM, Geoportal Nasional, Geoportal Kabupaten, Data Asli)
+const tourismData = [
   {
-    name: "Pantai",
-    color: "#FF9900",
-    opacity: 0.6,
-    source: "Kementerian Kelautan dan Perikanan (KKP)",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/0/0d/Logo_Kementerian_Kelautan_dan_Perikanan.png"
+    name: "Pantai Parangtritis",
+    type: "Pantai",
+    source: "BPS",
+    image: "/tourism/beach.png",
+    description: "Pantai wisata populer di Bantul.",
   },
   {
-    name: "Bukit",
-    color: "#3388ff",
-    opacity: 0.6,
-    source: "Badan Informasi Geospasial (BIG)",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/0/09/Logo_BIG.png"
+    name: "Gunung Merapi",
+    type: "Gunung",
+    source: "OSM",
+    image: "/tourism/mountain.png",
+    description: "Gunung berapi aktif di Yogyakarta.",
   },
   {
-    name: "Air Terjun",
-    color: "#ffcc00",
-    opacity: 0.6,
-    source: "Dinas Pariwisata Provinsi",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/1/17/Logo_Kemenparekraf.png"
+    name: "Museum Sonobudoyo",
+    type: "Museum",
+    source: "Geoportal Nasional",
+    image: "/tourism/museum.png",
+    description: "Museum budaya dan sejarah Yogyakarta.",
   },
   {
-    name: "Curug",
-    color: "#ff6600",
-    opacity: 0.6,
-    source: "Kementerian Lingkungan Hidup dan Kehutanan",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/8/80/Logo_KLHK.png"
+    name: "Candi Prambanan",
+    type: "Candi",
+    source: "Geoportal Kabupaten",
+    image: "/tourism/temple.png",
+    description: "Candi Hindu terbesar di Indonesia.",
   },
   {
-    name: "Goa",
-    color: "#00cc66",
-    opacity: 0.6,
-    source: "Balai Konservasi Sumber Daya Alam (BKSDA)",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/1/10/Logo_BKSDA.png"
+    name: "Air Terjun Sri Gethuk",
+    type: "Air Terjun",
+    source: "Data Asli Kabupaten",
+    image: "/tourism/waterfall.png",
+    description: "Air terjun indah di Gunungkidul.",
   },
   {
-    name: "Waduk",
-    color: "#9900cc",
-    opacity: 0.6,
-    source: "Kementerian PUPR",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/3/3a/Logo_PUPR.png"
+    name: "Desa Wisata Nglanggeran",
+    type: "Desa Wisata",
+    source: "Geoportal Nasional",
+    image: "/tourism/village.png",
+    description: "Desa wisata dengan pemandangan indah.",
   },
   {
-    name: "Desa Wisata",
-    color: "#ff0000",
-    opacity: 0.6,
-    source: "Kementerian Pariwisata (Kemenparekraf)",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/1/17/Logo_Kemenparekraf.png"
+    name: "Pantai Indrayanti",
+    type: "Pantai",
+    source: "BPS",
+    image: "/tourism/beach.png",
+    description: "Pantai pasir putih di Gunungkidul.",
   },
   {
-    name: "Wisata Puncak",
-    color: "#800080",
-    opacity: 0.3,
-    source: "Dinas Pariwisata Kabupaten/Kota",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/1/17/Logo_Kemenparekraf.png"
+    name: "Gunung Sumbing",
+    type: "Gunung",
+    source: "OSM",
+    image: "/tourism/mountain.png",
+    description: "Gunung tinggi dengan jalur pendakian menarik.",
   },
   {
-    name: "Kebun Teh",
-    color: "#00FF00",
-    opacity: 0.4,
-    source: "PT Perkebunan Nusantara / Dinas Perkebunan",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/7/74/Logo_PTPN.png"
+    name: "Museum Jogja Kembali",
+    type: "Museum",
+    source: "Geoportal Kabupaten",
+    image: "/tourism/museum.png",
+    description: "Museum sejarah kemerdekaan Indonesia.",
+  },
+  // contoh tambahan biar lebih banyak kotakan
+  {
+    name: "Kebun Binatang Gembira Loka",
+    type: "Kebun Binatang",
+    source: "BPS",
+    image: "/tourism/zoo.png",
+    description: "Kebun binatang populer di Yogyakarta.",
   },
   {
-    name: "Wisata Lainnya",
-    color: "#0000FF",
-    opacity: 0.4,
-    source: "Data gabungan dari Dinas Pariwisata",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/1/17/Logo_Kemenparekraf.png"
+    name: "Hutan Pinus Pengger",
+    type: "Hutan Wisata",
+    source: "OSM",
+    image: "/tourism/forest.png",
+    description: "Wisata hutan pinus yang sejuk dan fotogenik.",
+  },
+  {
+    name: "Pantai Drini",
+    type: "Pantai",
+    source: "Geoportal Nasional",
+    image: "/tourism/beach.png",
+    description: "Pantai dengan pulau karang unik.",
   },
 ];
 
-export default function MapLegendWithNavbar() {
+export default function Page() {
   return (
-    <div className="relative w-full h-full">
-      {/* NAVBAR Sumber Data */}
-      <nav className="fixed top-0 left-0 right-0 bg-white shadow-md z-30 px-4 py-2 flex items-center justify-between">
-        <h2 className="font-bold text-lg">Sumber Data Objek Wisata</h2>
-      </nav>
+    <div className="w-full min-h-screen bg-gray-100 p-6">
+      <h1 className="text-3xl font-bold mb-6">Data Pariwisata (Tanpa Basemap)</h1>
 
-      {/* Sidebar sumber data */}
-      <div className="fixed top-14 left-0 w-64 bg-white shadow-xl h-full overflow-y-auto z-20 p-4">
-        <h3 className="font-bold text-base mb-4">Daftar Sumber Data</h3>
-        {dataSources.map((item) => (
-          <div key={item.name} className="mb-4 p-3 border rounded-lg shadow-sm">
-            <div className="flex items-center mb-2">
-              <img
-                src={item.logo}
-                alt="logo"
-                className="w-8 h-8 object-contain mr-2"
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {tourismData.map((item, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition"
+          >
+            {/* Gambar */}
+            <div className="w-full h-32 bg-gray-200 rounded flex items-center justify-center overflow-hidden">
+              <Image
+                src={item.image}
+                alt={item.name}
+                width={150}
+                height={150}
+                className="object-contain"
+                onError={(e) => {
+                  e.currentTarget.src = "/example-logo.png";
+                }}
               />
-              <span className="font-semibold text-sm">{item.source}</span>
             </div>
-            <div className="flex items-center mb-1">
-              <div
-                className="w-4 h-4 mr-2"
-                style={{ backgroundColor: item.color, opacity: item.opacity }}
-              ></div>
-              <span className="text-xs">{item.name}</span>
-            </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Legend di kanan */}
-      <div className="absolute bottom-24 right-4 bg-white p-3 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
-        <h3 className="font-bold text-sm mb-2">Legend</h3>
-
-        {dataSources.map((item) => (
-          <div key={item.name} className="flex items-center mb-1">
-            <div
-              className="w-4 h-4 mr-2"
-              style={{ backgroundColor: item.color, opacity: item.opacity }}
-            ></div>
-            <span className="text-xs">{item.name}</span>
+            <h2 className="text-lg font-bold mt-3">{item.name}</h2>
+            <p className="text-sm text-gray-600">{item.type}</p>
+            <p className="text-xs text-blue-600">Sumber: {item.source}</p>
+            <p className="text-sm mt-2 text-gray-700">{item.description}</p>
           </div>
         ))}
       </div>
