@@ -3,13 +3,14 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import { Map as MapIcon, ArrowRight, LocateFixed, Heart } from "lucide-react";
 
 export default function Home() {
   // --- MINI LEAFLET MAP ---
   useEffect(() => {
+    const L = require("leaflet");
+    require("leaflet/dist/leaflet.css");
+    
     const map = L.map("mini-map", {
       center: [-7.826679, 110.164726],
       zoom: 10,
