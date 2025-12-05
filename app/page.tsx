@@ -5,12 +5,13 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Map as MapIcon, ArrowRight, LocateFixed, Heart } from "lucide-react";
+import type { LocationEvent } from "leaflet";
 
 export default function Home() {
   // --- MINI LEAFLET MAP ---
   useEffect(() => {
     const L = require("leaflet");
-    
+
     const map = L.map("mini-map", {
       center: [-7.826679, 110.164726],
       zoom: 10,
@@ -32,7 +33,7 @@ export default function Home() {
       btn.onclick = () => {
         map.locate({ setView: true, maxZoom: 15 });
 
-        map.on("locationfound", (e) => {
+        map.on("locationfound", (e: LocationEvent) => {
           L.marker(e.latlng, {
             icon: L.divIcon({
               className: "custom-marker",
