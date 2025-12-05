@@ -2,21 +2,8 @@
   "version": 2,
   "builds": [
     {
-      "src": "next.config.ts",
+      "src": "package.json",
       "use": "@vercel/next"
     }
-  ],
-  "framework": "nextjs",
-  "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "npm run build",
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production",
-    "NEXT_TELEMETRY_DISABLED": "1"
-  }
+  ]
 }
