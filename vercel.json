@@ -1,16 +1,18 @@
 {
   "version": 2,
   "builds": [
-    { "src": "next.config.js", "use": "@vercel/next" }
+    {
+      "src": "next.config.ts",
+      "use": "@vercel/next"
+    }
   ],
   "framework": "nextjs",
   "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
-  "redirects": [
+  "routes": [
     {
-      "source": "/home",
-      "destination": "/",
-      "permanent": true
+      "src": "/(.*)",
+      "dest": "/"
     }
   ],
   "env": {
