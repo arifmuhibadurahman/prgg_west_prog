@@ -1,0 +1,247 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    # Allow manual triggering of this workflow
+
+jobs:
+  deploy:
+    name: Deploy to EC2 Server
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup SSH Key
+      run: |
+        echo "${{ secrets.KEY }}" > private_key.pem
+        chmod 600 private_key.pem
+
+    - name: Deploy via SSH
+      run: |
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.USERNAME }}@${{ secrets.HOST }} << 'ENDSSH'
+          set -e
+          cd ${{ secrets.APP_DIR }}
+
+          echo "📁 Current directory: $(pwd)"
+          echo "📦 Preparing deployment..."
+
+          echo "📥 Stashing local changes..."
+          git stash || echo "No changes to stash"
+
+          echo "🔄 Pulling latest code..."
+          git pull origin main
+
+          echo "📋 Git status:"
+          git status
+
+          echo "📦 Installing dependencies..."
+          bun install
+
+          echo "🏗️ Building the application..."
+          NODE_ENV=production bun run build
+
+          # Verify build was created
+          if [ ! -d ".next" ]; then
+            echo "❌ Build failed - .next directory not found"
+            exit 1
+          fi
+
+          echo "🔧 Ensuring PORT is set in environment..."
+          if ! grep -q "PORT=" .env 2>/dev/null; then
+            echo "PORT=3000" >> .env
+            echo "✅ Added PORT=3000 to .env file"
+          fi
+
+          echo "📝 Creating PM2 ecosystem config for better persistence..."
+          cat > ecosystem.config.js << 'EOF'
+          module.exports = {
+            apps: [{
+              name: "sichatas",
+              script: "bun",
+              args: "run start",
+              watch: false,
+              max_memory_restart: "600M",
+              env: {
+                NODE_ENV: "production",
+                PORT: 3000
+              },
+              exp_backoff_restart_delay: 100,
+              max_restarts: 10,
+              restart_delay: 5000,
+              autorestart: true,
+              kill_timeout: 10000,
+              wait_ready: true
+            }]
+          }
+          EOF
+
+          echo "🛑 Stopping any existing PM2 processes..."
+          bunx pm2 stop sichatas 2>/dev/null || echo "No process named sichatas to stop"
+          bunx pm2 delete sichatas 2>/dev/null || echo "No process named sichatas to delete"
+
+          echo "▶️ Starting application with PM2 using ecosystem config..."
+          bunx pm2 start ecosystem.config.js
+
+          echo "🔍 Checking if application is running..."
+          sleep 10 # Give more time for Next.js to start
+          
+          if bunx pm2 list | grep -q "sichatas" && bunx pm2 show sichatas | grep -q "online"; then
+            echo "✅ Application is running successfully!"
+            echo "📊 PM2 process details:"
+            bunx pm2 show sichatas
+          else
+            echo "⚠️ First start attempt failed, trying again with direct command..."
+            bunx pm2 start bun --name sichatas --max-memory-restart 600M -- run start
+            
+            sleep 5
+            if ! bunx pm2 list | grep -q "sichatas"; then
+              echo "❌ Failed to start application after multiple attempts"
+              echo "📜 Showing application logs:"
+              tail -n 50 .next/server/app/page.js 2>/dev/null || echo "Cannot find page.js"
+              exit 1
+            fi
+          fi
+
+          echo "💾 Saving PM2 process list..."
+          bunx pm2 save
+
+          echo "🚀 Setting up PM2 to start on system boot..."
+          # Generate startup script but don't execute it if it already exists
+          bunx pm2 startup | grep -v PM2 | grep -v "already registered" > startup_script.sh || true
+          if [ -s startup_script.sh ]; then
+            chmod +x startup_script.sh
+            sudo ./startup_script.sh
+            rm startup_script.sh
+            echo "✅ PM2 startup script installed"
+          else
+            echo "ℹ️ PM2 startup already configured"
+          fi
+
+          echo "⏱️ Setting up cron job to periodically save PM2 process list..."
+          CRON_JOB="*/30 * * * * cd ${{ secrets.APP_DIR }} && bunx pm2 save > /dev/null 2>&1"
+          (crontab -l 2>/dev/null | grep -v "bunx pm2 save"; echo "$CRON_JOB") | crontab -
+          echo "✅ Cron job for PM2 save configured"
+
+          echo "🔄 Creating healthcheck endpoint..."
+          mkdir -p app/api/healthcheck
+          cat > app/api/healthcheck/route.ts << 'EOF'
+          import { NextResponse } from "next/server";
+
+          export async function GET() {
+            return NextResponse.json({ 
+              status: "ok", 
+              timestamp: new Date().toISOString(),
+              version: process.env.npm_package_version || "unknown"
+            });
+          }
+          EOF
+
+          echo "🔎 Creating process monitoring script..."
+          cat > ~/monitor-sichatas.sh << 'EOF'
+          #!/bin/bash
+
+          # Log file
+          LOG_FILE=~/sichatas-monitor.log
+
+          # Check if sichatas is running via PM2
+          if ! bunx pm2 list | grep -q sichatas; then
+            echo "$(date): PM2 process not found, restarting..." >> $LOG_FILE
+            cd ${{ secrets.APP_DIR }}
+            bunx pm2 start ecosystem.config.js
+            bunx pm2 save
+            echo "$(date): Restarted sichatas app via PM2" >> $LOG_FILE
+          fi
+
+          # Check if app is responding to HTTP requests
+          if ! curl -s http://localhost:3000/api/healthcheck | grep -q "status.*ok"; then
+            echo "$(date): App not responding to healthcheck, restarting..." >> $LOG_FILE
+            cd ${{ secrets.APP_DIR }}
+            bunx pm2 restart sichatas
+            bunx pm2 save
+            echo "$(date): Restarted sichatas app via healthcheck" >> $LOG_FILE
+          fi
+          EOF
+          
+          chmod +x ~/monitor-sichatas.sh
+          
+          # Add monitor script to crontab if not already present
+          if ! crontab -l 2>/dev/null | grep -q "monitor-sichatas.sh"; then
+            (crontab -l 2>/dev/null; echo "*/5 * * * * ~/monitor-sichatas.sh") | crontab -
+            echo "✅ Monitoring cron job configured"
+          else
+            echo "ℹ️ Monitoring cron job already exists"
+          fi
+          
+          echo "🛠️ Setting up service for additional reliability..."
+          cat > ~/sichatas-service.service << 'EOF'
+          [Unit]
+          Description=Sichatas Application Service
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=${{ secrets.USERNAME }}
+          WorkingDirectory=${{ secrets.APP_DIR }}
+          ExecStart=$(which bun) run start
+          Restart=always
+          RestartSec=10
+          StandardOutput=syslog
+          StandardError=syslog
+          SyslogIdentifier=sichatas
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          echo "🔧 Testing Nginx configuration..."
+          sudo nginx -t && echo "✅ Nginx configuration is valid" || echo "❌ Nginx configuration has errors"
+
+          echo "🔄 Reloading Nginx..."
+          sudo systemctl reload nginx || echo "⚠️ Nginx not reloaded"
+
+          echo "🔍 Setting longer timeouts in Nginx..."
+          if ! sudo grep -q "proxy_read_timeout 300s" /etc/nginx/sites-available/default; then
+            sudo sed -i '/server {/a \ \ \ \ proxy_connect_timeout 300s;\n    proxy_send_timeout 300s;\n    proxy_read_timeout 300s;\n    fastcgi_send_timeout 300s;\n    fastcgi_read_timeout 300s;' /etc/nginx/sites-available/default
+            sudo nginx -t && sudo systemctl reload nginx
+            echo "✅ Nginx timeouts configured"
+          fi
+
+          echo "🔍 Verifying application response..."
+          if curl -s http://localhost:3000/api/healthcheck | grep -q "status.*ok"; then
+            echo "✅ Application is responding on healthcheck endpoint"
+          elif curl -s http://localhost:3000 > /dev/null; then
+            echo "✅ Application is responding on main endpoint"
+          else
+            echo "⚠️ Application is not responding"
+            echo "📜 PM2 logs:"
+            bunx pm2 logs sichatas --lines 20
+          fi
+
+          echo "📊 System resources:"
+          free -h
+          df -h
+
+          echo "✅ Deployed to ${{ secrets.DOMAIN }} successfully!"
+        ENDSSH
+
+    - name: Clean up
+      run: rm -f private_key.pem
+
+    - name: Verify Deployment
+      run: |
+        echo "Waiting 30 seconds for server to fully initialize..."
+        sleep 30
+        
+        # Try to access the website and check for successful response
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.DOMAIN }})
+        
+        if [ $HTTP_STATUS -eq 200 ]; then
+          echo "✅ Website is accessible - HTTP Status: $HTTP_STATUS"
+        else
+          echo "⚠️ Website returned HTTP Status: $HTTP_STATUS - This might need investigation"
+        fi
