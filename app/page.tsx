@@ -70,9 +70,9 @@ export default function Home() {
           <nav>
   <ul className="flex gap-8 font-medium text-white/80">
     <li><Link href="/" className="hover:text-white">BERANDA</Link></li>
-    <li><Link href="/Pariwisata" className="hover:text-white">PARIWISATA</Link></li>
-    <li><Link href="/Ekonomi" className="hover:text-white">EKONOMI</Link></li>
-    <li><Link href="/Map" className="hover:text-white">MAP</Link></li>
+    <li><Link href="/Pariwisata" className="hover:text-white">PRODUK WISATA</Link></li>
+    <li><Link href="/Ekonomi" className="hover:text-white">PRODUK EKONOMI</Link></li>
+    <li><Link href="/Map" className="hover:text-white">PETA PARIWISATA</Link></li>
     <li><Link href="/data" className="hover:text-white">DATA</Link></li>
 
     {/* LOGIN / ADMIN */}
